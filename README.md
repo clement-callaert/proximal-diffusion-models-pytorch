@@ -28,7 +28,8 @@ Why it matters: The proximal formulation inherently stabilizes the reverse updat
 
 4. Repository Highlights
 
-(Insert notebook figures here)
+<img src="./output/dino.png" alt="Plot" width="600">
+<img src="./output/batman.png" alt="Plot" width="600">
 
 Training Dynamics: Comparison between classical Score Matching loss and Proximal loss on the MNIST dataset.
 
