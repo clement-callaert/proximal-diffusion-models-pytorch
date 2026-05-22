@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.env
+
+# Hydra / outputs
+outputs/
+multirun/
+.hydra/
+
+# Data & artifacts
+data/mnist/
+data/raw/
+*.pt
+*.pth
+!tests/fixtures/**/*.pt
+
+# Plots & logs
+plots/
+wandb/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/

@@ -1,0 +1,9 @@
+# @package _global_
+score_training:
+  total_iters: 20000
+  save_every: 5000
+
+prox_training:
+  total_iters: 20000
+  l1_iters: null
+  save_every: 5000

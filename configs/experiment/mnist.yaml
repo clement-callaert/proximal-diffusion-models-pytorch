@@ -1,0 +1,15 @@
+# @package _global_
+data:
+  name: mnist
+  image_size: 32
+  in_ch: 1
+  batch_size: 512
+
+model:
+  backbone: unet
+  ch: 64
+  ch_mult: [1, 2, 2, 2]
+  attn: [1]
+  num_res_blocks: 2
+  dropout: 0.1
+  use_checkpoint: false

@@ -1,0 +1,18 @@
+# @package _global_
+data:
+  name: dino
+  dim: 2
+  batch_size: 2048
+  source_url: https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-10-13/datasaurus.csv
+
+model:
+  backbone: mlp
+  hidden_dim: 512
+  num_blocks: 4
+
+prox_training:
+  total_iters: 50000
+  l1_iters: 16667
+
+score_training:
+  total_iters: 50000

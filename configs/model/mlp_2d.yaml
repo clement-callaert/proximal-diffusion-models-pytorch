@@ -1,0 +1,5 @@
+# @package _global_
+model:
+  backbone: mlp
+  hidden_dim: 512
+  num_blocks: 4

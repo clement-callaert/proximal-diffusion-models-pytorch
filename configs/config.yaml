@@ -1,0 +1,62 @@
+defaults:
+  - experiment: mnist
+  - model: unet_mnist
+  - training: paper_mnist
+  - sampler: hybrid
+  - hydra: default
+  - _self_
+
+pipeline:
+  run_data: true
+  run_train_score: true
+  run_train_prox: true
+  run_evaluate: true
+  run_sample: false
+
+seed: 0
+
+hardware:
+  device: cuda
+  num_workers: 8
+  amp_dtype: bfloat16
+  grad_clip: 1.0
+  grad_accum_steps: 1
+  use_fused_adamw: true
+  compile_model: false
+
+paths:
+  data_dir: data
+  output_dir: outputs
+  plot_dir: plots
+  score_ckpt_dir: ${paths.output_dir}/score
+  prox_ckpt_dir: ${paths.output_dir}/prox_${sampler.discretization}
+
+sde:
+  beta_min: 0.1
+  beta_max: 20.0
+
+score_training:
+  lr: 2.0e-4
+  warmup_iters: 0
+  total_iters: 20000
+  save_every: 5000
+  ema_decay: 0.9999
+
+prox_training:
+  discretization: ${sampler.discretization}
+  l1_iters: 75000
+  total_iters: 225000
+  l1_lr: 1.0e-4
+  pm_lr: 1.0e-5
+  pm_gamma_start: 1.0
+  pm_gamma_decay: 0.5
+  pm_gamma_stages: 2
+  nfe_candidates: [5, 10, 20, 50, 100, 1000]
+  save_every: 25000
+  ema_decay: 0.9999
+
+evaluation:
+  n_eval_samples: 1024
+  nfe_list: [5, 10, 20, 50, 100]
+  compute_fid: true
+  save_samples: true
