@@ -27,9 +27,13 @@ Structured PyTorch implementation of **Proximal Diffusion Models (ProxDM)**: sco
 ```bash
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-pip install -r requirements-dev.txt   # optional: pytest
+pip install -e .                    # editable install (imports ``src.*``)
+pip install -e ".[dev]"             # optional: pytest, ruff
 ```
+
+Or without editable install: `pip install -r requirements.txt`
+
+**Colab / cloned repo:** `cd` into the folder that contains this `setup.py`, then run `pip install -e .` (not a parent directory).
 
 **GPU (recommended for MNIST):** CUDA PyTorch. The default config uses `hardware.device=cuda`, TF32, and `bfloat16` AMP.
 
