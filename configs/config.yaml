@@ -1,6 +1,5 @@
 defaults:
   - experiment: mnist
-  - model: unet_mnist
   - training: paper_mnist
   - sampler: hybrid
   - hydra: default

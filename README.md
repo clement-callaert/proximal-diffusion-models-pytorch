@@ -4,23 +4,111 @@
 **Institution:** CentraleSupélec — M2 Math & AI (Optimization for Computer Vision)  
 **Reference:** [Beyond Scores: Proximal Diffusion Models](https://arxiv.org/abs/2507.08956) (Fang, Díaz, Buchanan, Sulam, 2025)
 
-This repository is a structured, reproducible research implementation of **Proximal Diffusion Models (ProxDM)**. It compares score-based VP-SDE sampling (forward discretization) with proximal, backward-discretized samplers on **MNIST (32×32)** and **2D point-cloud** experiments (Datasaurus dino, custom Batman outline).
+Structured PyTorch implementation of **Proximal Diffusion Models (ProxDM)**: score-based VP-SDE sampling (forward discretization) vs proximal, backward-discretized samplers on **MNIST (32×32)** and **2D point clouds** (Datasaurus dino, Batman outline).
 
-> **Course notebook:** exploratory work lives in `ovo_project_clément_callaert.ipynb`.  
-> **Production pipeline:** training, evaluation, and sampling are intended to run via `main.py` and Hydra configs under `configs/`.
+> **Notebook:** exploratory reference — `notebooks/ovo_project_clément_callaert.ipynb`  
+> **Pipeline:** `python main.py` + Hydra configs under `configs/`
 
 ---
 
 ## Overview
 
-Diffusion models typically learn the **score** \(\nabla_x \log p_t(x)\) and simulate the reverse SDE with **forward** schemes (e.g. Euler–Maruyama). That often requires many **function evaluations (NFE)** per sample.
-
-**ProxDM** learns a **proximal operator** of the log-density and uses **backward** (implicit) discretization of the reverse process. In practice this allows **fewer sampling steps** while keeping competitive sample quality—especially on low-dimensional and MNIST-scale setups explored here.
-
 | Approach | Discretization | Network conditions on |
 |----------|----------------|------------------------|
 | Score SDE | Forward (Euler–Maruyama) | time \(t\) |
 | ProxDM (hybrid / backward) | Backward + optional forward term | time \(t\) and step size \(\lambda\) |
+
+---
+
+## Quick start
+
+### 1. Install
+
+```bash
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+pip install -r requirements-dev.txt   # optional: pytest
+```
+
+**GPU (recommended for MNIST):** CUDA PyTorch. The default config uses `hardware.device=cuda`, TF32, and `bfloat16` AMP.
+
+### 2. Sanity check
+
+```bash
+pytest -q
+```
+
+### 3. Smoke run (~1–2 min, CPU, verifies the full pipeline)
+
+Trains score + prox on **dino** with tiny iteration counts (no evaluation):
+
+```bash
+python main.py experiment=dino training=quick \
+  score_training.total_iters=30 prox_training.total_iters=60 \
+  pipeline.run_evaluate=false hardware.device=cpu hardware.num_workers=0
+```
+
+Checkpoints land under `outputs/<date>/<time>/outputs/score/` and `.../prox_hybrid/` (Hydra run directory).
+
+### 4. Quick experiment (shortened budget)
+
+**2D dino** (~tens of minutes on GPU with `training=quick` defaults):
+
+```bash
+python main.py experiment=dino training=quick hardware.device=cuda
+```
+
+**MNIST** (20k score + 20k prox iters — still hours on a good GPU; use smoke overrides below for a faster dry run):
+
+```bash
+python main.py training=quick hardware.device=cuda
+```
+
+**Faster MNIST dry run** (train + FID sweep, reduced iters — quality will be poor):
+
+```bash
+python main.py training=quick \
+  score_training.total_iters=500 prox_training.total_iters=1500 \
+  score_training.save_every=500 prox_training.save_every=1500 \
+  evaluation.nfe_list=[5,10,20] hardware.device=cuda
+```
+
+### 5. Paper-scale MNIST (multi-hour / overnight on GPU)
+
+```bash
+python main.py training=paper_mnist hardware.device=cuda
+```
+
+### 6. Evaluation only (needs checkpoints from a prior run)
+
+```bash
+python main.py pipeline.run_train_score=false pipeline.run_train_prox=false \
+  pipeline.run_evaluate=true hardware.device=cuda
+```
+
+Point the run at existing checkpoints by overriding paths, e.g.  
+`paths.score_ckpt_dir=/path/to/score paths.prox_ckpt_dir=/path/to/prox_hybrid`.
+
+### 7. Replot FID curve from saved JSON
+
+```bash
+python scripts/plot_fid_curve.py outputs/<date>/<time>/outputs/eval_samples/fid_sweep.json -o fid.png
+```
+
+---
+
+## Other useful commands
+
+| Goal | Command |
+|------|---------|
+| Batman 2D | `python main.py experiment=batman training=quick` |
+| Backward prox sampler | `python main.py sampler=backward` |
+| Skip training, data check only | `python main.py pipeline.run_train_score=false pipeline.run_train_prox=false pipeline.run_evaluate=false` |
+| Override NFE for FID | `python main.py evaluation.nfe_list=[5,10,20,50,100]` |
+| CPU fallback | append `hardware.device=cpu` |
+
+Hydra stores each run under `outputs/<YYYY-MM-DD>/<HH-MM-SS>/` (config snapshot + logs + checkpoints).
 
 ---
 
@@ -37,78 +125,17 @@ src/
   training/       Loops, EMA, PM schedule, optimizers
   evaluation/     FID vs NFE, 2D visual comparison
   utils/          seed, device, checkpoints, logging
-scripts/          Standalone utilities (sample, replot figures)
+scripts/          plot_fid_curve.py, …
 tests/            Unit & smoke tests
-notebooks/        Optional exploratory notebooks
+main.py           Hydra entry point
+notebooks/        Course notebook (reference)
 papers/           Reference PDFs
-figures/          README figures (dino, batman, …)
+figures/          README figures
 ```
-
-Module stubs are in place; implement logic by migrating from `ovo_project_clément_callaert.ipynb`.
 
 ---
 
-## Installation
-
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# optional dev tools
-pip install -r requirements-dev.txt
-```
-
-**GPU (recommended):** CUDA-capable PyTorch; tested with RTX 5090-class hardware (TF32, `bfloat16` AMP, large batch sizes).
-
----
-
-## Usage (after implementing `src/`)
-
-Default run (MNIST, paper training budget, hybrid sampler):
-
-```bash
-python main.py
-```
-
-**Quick budget** (matches shortened notebook runs):
-
-```bash
-python main.py training=quick
-```
-
-**2D experiments:**
-
-```bash
-python main.py experiment=dino model=mlp_2d training=quick
-python main.py experiment=batman model=mlp_2d
-```
-
-**Backward discretization ablation:**
-
-```bash
-python main.py sampler=backward
-```
-
-**Run only evaluation** (requires trained checkpoints):
-
-```bash
-python main.py pipeline.run_data=false pipeline.run_train_score=false \
-  pipeline.run_train_prox=false pipeline.run_evaluate=true
-```
-
-**Hydra overrides** (examples):
-
-```bash
-python main.py prox_training.total_iters=50000 score_training.total_iters=20000
-python main.py evaluation.nfe_list=[5,10,20,50,100] hardware.compile_model=true
-```
-
-Hydra writes run configs under `outputs/<date>/<time>/`.
-
----
-
-## Experiments (project scope)
+## Experiments
 
 | Experiment | Data | Backbone | Main metric |
 |------------|------|----------|-------------|
@@ -116,9 +143,9 @@ Hydra writes run configs under `outputs/<date>/<time>/`.
 | Dino | Datasaurus 2D cloud | Time-conditioned MLP | Scatter samples vs NFE |
 | Batman | Parametric outline | Same MLP | Qualitative + loss curves |
 
-**Training schedule (ProxDM, MNIST):** L1 warm-up (~⅓ of prox iters) → proximal matching with \(\zeta\) decay (1.0 → 0.5). See `configs/training/paper_mnist.yaml`.
+**ProxDM schedule:** L1 warm-up (~⅓ of prox iters) → proximal matching with \(\zeta\) decay (1.0 → 0.5). See `configs/training/paper_mnist.yaml`.
 
-**Not in scope (future work):** CIFAR-10, CelebA-HQ, score **ODE** sampler, precision/recall metrics from the paper.
+**Not in scope:** CIFAR-10, CelebA-HQ, score ODE sampler, precision/recall metrics from the paper.
 
 ---
 
@@ -126,10 +153,10 @@ Hydra writes run configs under `outputs/<date>/<time>/`.
 
 | Config group | Role |
 |--------------|------|
-| `experiment/` | `mnist`, `dino`, `batman` — data + default model sizes |
+| `experiment/` | `mnist`, `dino`, `batman` — data + model choice |
 | `model/` | `unet_mnist`, `mlp_2d` |
 | `training/` | `paper_mnist` (225k prox), `quick` (20k prox) |
-| `sampler/` | `hybrid`, `backward` — \(\lambda\) and sampling discretization |
+| `sampler/` | `hybrid`, `backward` |
 
 Root defaults: `configs/config.yaml`.
 
@@ -141,22 +168,20 @@ Root defaults: `configs/config.yaml`.
 pytest
 ```
 
-Implement tests in `tests/` as you port code from the notebook.
-
 ---
 
 ## References
 
 1. Fang, Z., et al. (2025). **Beyond Scores: Proximal Diffusion Models.** arXiv:2507.08956.  
 2. Official code: [ZhenghanFang/ProxDM](https://github.com/ZhenghanFang/ProxDM)  
-3. Song, Y., et al. (2020). **Score-Based Generative Modeling through Stochastic Differential Equations.**  
+3. Song, Y., et al. (2020). **Score-Based Generative Modeling through Stochastic Differential Equations.**
 
 ---
 
 ## Related files
 
-- `README_ovo_project.md` — short course-project summary (legacy)  
-- `ovo_project_clément_callaert.ipynb` — full from-scratch implementation notebook  
+- `README_ovo_project.md` — short course summary  
+- `notebooks/ovo_project_clément_callaert.ipynb` — from-scratch reference  
 - `report.pdf` — project report  
 - `papers/arXiv 2507.08956.pdf` — ProxDM paper  
 
@@ -169,4 +194,4 @@ Implement tests in `tests/` as you port code from the notebook.
   <img src="./figures/batman.png" alt="Batman samples" width="480">
 </p>
 
-*2D generative samples (ProxDM vs score SDE) — see notebook and `figures/` after re-running the pipeline.*
+*Example 2D samples (ProxDM vs score SDE). Re-run the pipeline or notebook to regenerate.*
