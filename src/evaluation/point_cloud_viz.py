@@ -19,14 +19,15 @@ from src.sampling.score_sampler import sample_score
 def _axis_limits(
     reference: Optional[torch.Tensor],
     samples_list: Sequence[torch.Tensor],
-    margin: float = 0.5,
+    margin: float = 0.35,
 ) -> Tuple[float, float, float, float]:
-    """Symmetric limits around pooled 2D points."""
+    """Symmetric limits around reference cloud, or pooled samples if no reference."""
     chunks = []
     if reference is not None:
         chunks.append(reference.detach().cpu())
-    for s in samples_list:
-        chunks.append(s.detach().cpu())
+    else:
+        for s in samples_list:
+            chunks.append(s.detach().cpu())
     if not chunks:
         return (-2.5, 2.5, -2.5, 2.5)
 
@@ -75,34 +76,57 @@ def plot_point_cloud_comparison(
     Grid: row 0 = score, row 1 = prox; one column per NFE (notebook layout).
     """
     n_cols = len(nfe_list)
-    fig, axes = plt.subplots(2, n_cols, figsize=(3 * n_cols, 6), squeeze=False)
+    fig, axes = plt.subplots(
+        2,
+        n_cols,
+        figsize=(4.2 * n_cols, 9),
+        squeeze=False,
+        sharex=True,
+        sharey=True,
+    )
     x0, x1, y0, y1 = _axis_limits(
         reference_points,
         list(score_samples) + list(prox_samples),
     )
+    title_fs = 14
+    label_fs = 13
+    tick_fs = 11
+    marker_size = 14
+
     for col, nfe in enumerate(nfe_list):
         s = score_samples[col].cpu().numpy()
         p = prox_samples[col].cpu().numpy()
 
-        axes[0, col].scatter(s[:, 0], s[:, 1], alpha=0.5, s=5, color="#1f77b4")
-        axes[0, col].set_title(f"Score SDE (NFE={nfe})")
+        axes[0, col].scatter(
+            s[:, 0], s[:, 1], alpha=0.55, s=marker_size, color="#1f77b4", linewidths=0
+        )
+        axes[0, col].set_title(f"NFE={nfe}", fontsize=title_fs, pad=8)
         axes[0, col].set_xlim(x0, x1)
         axes[0, col].set_ylim(y0, y1)
         axes[0, col].set_aspect("equal", adjustable="box")
+        axes[0, col].tick_params(labelsize=tick_fs)
+        if col > 0:
+            axes[0, col].tick_params(labelleft=False)
+            axes[1, col].tick_params(labelleft=False)
+        axes[0, col].tick_params(labelbottom=False)
 
-        axes[1, col].scatter(p[:, 0], p[:, 1], alpha=0.5, s=5, color="#ff7f0e")
-        axes[1, col].set_title(f"{prox_label} (NFE={nfe})")
+        axes[1, col].scatter(
+            p[:, 0], p[:, 1], alpha=0.55, s=marker_size, color="#ff7f0e", linewidths=0
+        )
         axes[1, col].set_xlim(x0, x1)
         axes[1, col].set_ylim(y0, y1)
         axes[1, col].set_aspect("equal", adjustable="box")
+        axes[1, col].tick_params(labelsize=tick_fs)
 
-    fig.suptitle(title)
-    plt.tight_layout()
+    axes[0, 0].set_ylabel("Score SDE", fontsize=label_fs)
+    axes[1, 0].set_ylabel(prox_label, fontsize=label_fs)
+    fig.suptitle(title, fontsize=16, y=0.98)
+    fig.subplots_adjust(left=0.07, right=0.99, top=0.92, bottom=0.06, wspace=0.08, hspace=0.12)
 
     if save_path is not None:
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(path, dpi=150, bbox_inches="tight")
+        fig.savefig(path, dpi=200, bbox_inches="tight")
 
     if show:
         plt.show()

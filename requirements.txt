@@ -1,6 +1,14 @@
+# PyTorch CUDA 13.1 wheels (sm_120 Blackwell: RTX 5070 / 5080 / 5090).
+# Matches a host CUDA 13.1 toolkit/driver. cu124/cu128 without sm_120 fail with
+# "no kernel image is available" on RTX 50-series.
+# Use --extra-index-url (not --index-url alone) so PyPI deps resolve correctly.
+# Install: pip install -r requirements.txt
+# Editable: pip install -r requirements.txt && pip install -e .
+--extra-index-url https://download.pytorch.org/whl/cu131
+
 # Core runtime
-torch>=2.4.0,<2.7
-torchvision>=0.19.0,<0.22
+torch>=2.7.0
+torchvision>=0.22.0
 numpy>=1.26,<3
 matplotlib>=3.8,<4
 pandas>=2.1,<3
